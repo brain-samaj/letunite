@@ -3,48 +3,62 @@ session_start();
 require "db.php";
 
 if(!isset($_SESSION['id'])){
-    header("Location:index.php");
     exit;
 }
 
 $sender = $_SESSION['id'];
-$receiver = $_POST['receiver'];
+$receiver = $_POST['receiver'] ?? null;
+$message = trim($_POST['message'] ?? "");
 
-$message = $_POST['message'] ?? "";
+/* STOP IF NO RECEIVER */
+if(!$receiver){
+    exit;
+}
 
-/* FILE UPLOAD HANDLER */
-function uploadFile($field){
-    if(!empty($_FILES[$field]['name'])){
-        $name = time() . "_" . basename($_FILES[$field]['name']);
-        move_uploaded_file($_FILES[$field]['tmp_name'], "uploads/" . $name);
-        return $name;
+/* -----------------------
+   IMAGE UPLOAD
+------------------------*/
+$image = null;
+
+if(!empty($_FILES['image']['name'])){
+    $imgName = time() . "_" . basename($_FILES['image']['name']);
+    $target = "uploads/" . $imgName;
+
+    if(move_uploaded_file($_FILES['image']['tmp_name'], $target)){
+        $image = $imgName;
     }
-    return null;
 }
 
-$image = uploadFile("image");
-$video = uploadFile("video");
-$file  = uploadFile("file");
-$audio = uploadFile("audio");
+/* -----------------------
+   VOICE UPLOAD
+------------------------*/
+$voice = null;
 
-/* Prevent empty send */
-if($message=="" && !$image && !$video && !$file && !$audio){
-    exit("Empty message");
+if(!empty($_FILES['voice']['name'])){
+    $voiceName = time() . "_" . basename($_FILES['voice']['name']);
+    $target = "uploads/" . $voiceName;
+
+    if(move_uploaded_file($_FILES['voice']['tmp_name'], $target)){
+        $voice = $voiceName;
+    }
 }
 
-$db->prepare("
-    INSERT INTO messages(sender, receiver, message, image, video, file, audio, seen)
-    VALUES(?,?,?,?,?,?,?,0)
-")->execute([
+/* -----------------------
+   SAVE MESSAGE
+------------------------*/
+$stmt = $db->prepare("
+INSERT INTO messages (sender, receiver, message, image, voice)
+VALUES (?, ?, ?, ?, ?)
+");
+
+$stmt->execute([
     $sender,
     $receiver,
     $message,
     $image,
-    $video,
-    $file,
-    $audio
+    $voice
 ]);
 
-header("Location: conversation.php?id=".$receiver);
+/* RETURN TO CHAT */
+header("Location: conversation.php?user=" . $receiver);
 exit;
-?>

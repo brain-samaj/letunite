@@ -2,50 +2,81 @@
 session_start();
 require "db.php";
 
-/* CHECK LOGIN */
 if(!isset($_SESSION['id'])){
-    header("Location: login.php");
-    exit;
+    exit("Not allowed");
 }
 
 $user = $_SESSION['id'];
 
 $content = isset($_POST['content']) ? trim($_POST['content']) : "";
 
-/* DEFAULT IMAGE */
+/* FILES */
 $image = "";
+$video = "";
 
-/* CREATE UPLOAD FOLDER IF NOT EXISTS */
-if(!is_dir("uploads")){
-    mkdir("uploads", 0777, true);
+/* =========================
+   VALIDATION (IMPORTANT)
+========================= */
+
+if(
+$content == "" &&
+empty($_FILES['image']['name']) &&
+empty($_FILES['video']['name'])
+){
+    exit("Post cannot be empty");
 }
 
-/* IMAGE UPLOAD */
+/* =========================
+   IMAGE UPLOAD
+========================= */
+
 if(!empty($_FILES['image']['name'])){
 
-    $ext = pathinfo($_FILES['image']['name'], PATHINFO_EXTENSION);
-    $file = time() . "_" . rand(1000,9999) . "." . $ext;
+$img = time()."_img_".basename($_FILES['image']['name']);
 
-    move_uploaded_file(
-        $_FILES['image']['tmp_name'],
-        "uploads/" . $file
-    );
+move_uploaded_file(
+$_FILES['image']['tmp_name'],
+"uploads/".$img
+);
 
-    $image = $file;
+$image = $img;
 }
 
-/* INSERT POST */
+/* =========================
+   VIDEO UPLOAD
+========================= */
+
+if(!empty($_FILES['video']['name'])){
+
+$vid = time()."_vid_".basename($_FILES['video']['name']);
+
+move_uploaded_file(
+$_FILES['video']['tmp_name'],
+"uploads/".$vid
+);
+
+/* NOTE:
+   True duration check needs FFmpeg (optional)
+*/
+
+$video = $vid;
+}
+
+/* =========================
+   INSERT POST
+========================= */
+
 $stmt = $db->prepare("
-    INSERT INTO posts(user_id, content, image)
-    VALUES(?,?,?)
+INSERT INTO posts(user_id, content, image, video)
+VALUES(?,?,?,?)
 ");
 
 $stmt->execute([
-    $user,
-    $content,
-    $image
+$user,
+$content,
+$image,
+$video
 ]);
 
 header("Location: home.php");
 exit;
-?>

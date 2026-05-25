@@ -7,62 +7,80 @@ if(!isset($_SESSION['id'])){
     exit;
 }
 
+if(!isset($_GET['user'])){
+    header("Location:chat.php");
+    exit;
+}
+
 $me = $_SESSION['id'];
-$friend = $_GET['id'];
+$other = (int)$_GET['user'];
 
-/* mark seen */
-$db->prepare("
-    UPDATE messages SET seen=1
-    WHERE sender=? AND receiver=?
-")->execute([$friend, $me]);
+/* GET USER */
+$userInfo = $db->prepare("SELECT * FROM users WHERE id=?");
+$userInfo->execute([$other]);
+$user = $userInfo->fetch();
 
+/* GET MESSAGES */
 $msgs = $db->prepare("
-    SELECT * FROM messages
-    WHERE (sender=? AND receiver=?)
-    OR (sender=? AND receiver=?)
-    ORDER BY id ASC
+SELECT * FROM messages
+WHERE (sender=? AND receiver=?)
+OR (sender=? AND receiver=?)
+ORDER BY id ASC
 ");
-$msgs->execute([$me,$friend,$friend,$me]);
+
+$msgs->execute([$me,$other,$other,$me]);
+$messages = $msgs->fetchAll();
 ?>
 
 <!DOCTYPE html>
 <html>
 <head>
+<title>Conversation</title>
 <link rel="stylesheet" href="style.css">
-<title>Chat</title>
+
+<script>
+window.onload = function(){
+    let box = document.querySelector(".chat-box");
+    box.scrollTop = box.scrollHeight;
+};
+</script>
+
 </head>
 
 <body class="chat-body">
 
+<!-- TOP BAR -->
+<div class="chat-header">
+    <a href="chat.php" style="color:white;text-decoration:none;">←</a>
+
+    <img src="<?= !empty($user['profile_pic']) ? 'uploads/'.$user['profile_pic'] : 'assets/default.png' ?>">
+
+    <b><?= htmlspecialchars($user['name']) ?></b>
+</div>
+
+<!-- CHAT MESSAGES -->
 <div class="chat-box">
 
-<?php foreach($msgs as $m): ?>
+<?php foreach($messages as $m): ?>
 
-<div class="msg <?= $m['sender']==$me?'me':'them' ?>">
+<div class="msg <?= $m['sender']==$me ? 'me' : 'them' ?>">
 
-    <?php if($m['message']): ?>
-        <p><?= htmlspecialchars($m['message']) ?></p>
-    <?php endif; ?>
+<!-- TEXT -->
+<?php if(!empty($m['message'])): ?>
+    <div><?= htmlspecialchars($m['message']) ?></div>
+<?php endif; ?>
 
-    <?php if($m['image']): ?>
-        <img src="uploads/<?= $m['image'] ?>" style="max-width:200px;">
-    <?php endif; ?>
+<!-- IMAGE -->
+<?php if(!empty($m['image'])): ?>
+    <img src="uploads/<?= htmlspecialchars($m['image']) ?>" style="max-width:200px;border-radius:10px;margin-top:5px;">
+<?php endif; ?>
 
-    <?php if($m['video']): ?>
-        <video controls style="max-width:200px;">
-            <source src="uploads/<?= $m['video'] ?>">
-        </video>
-    <?php endif; ?>
-
-    <?php if($m['file']): ?>
-        <a href="uploads/<?= $m['file'] ?>" download>📁 Download File</a>
-    <?php endif; ?>
-
-    <?php if($m['audio']): ?>
-        <audio controls>
-            <source src="uploads/<?= $m['audio'] ?>">
-        </audio>
-    <?php endif; ?>
+<!-- VOICE -->
+<?php if(!empty($m['voice'])): ?>
+    <audio controls style="margin-top:5px;">
+        <source src="uploads/<?= htmlspecialchars($m['voice']) ?>">
+    </audio>
+<?php endif; ?>
 
 </div>
 
@@ -70,19 +88,21 @@ $msgs->execute([$me,$friend,$friend,$me]);
 
 </div>
 
-<!-- SEND FORM -->
-<form action="send.php" method="POST" enctype="multipart/form-data" class="chat-form">
+<!-- CHAT INPUT -->
+<form action="send.php" method="POST" class="chat-form" enctype="multipart/form-data">
 
-    <input type="hidden" name="receiver" value="<?= $friend ?>">
+<input type="hidden" name="receiver" value="<?= $other ?>">
 
-    <input type="text" name="message" placeholder="Message">
+<input type="text" name="message" placeholder="Message...">
 
-    <input type="file" name="image" accept="image/*">
-    <input type="file" name="video" accept="video/*">
-    <input type="file" name="file">
-    <input type="file" name="audio" accept="audio/*">
+<label for="img" style="font-size:20px;cursor:pointer;">📷</label>
+<input type="file" name="image" id="img" accept="image/*" style="display:none;">
 
-    <button>Send</button>
+<label for="voice" style="font-size:20px;cursor:pointer;">🎤</label>
+<input type="file" name="voice" id="voice" accept="audio/*" style="display:none;">
+
+<button type="submit">➤</button>
+
 </form>
 
 </body>
