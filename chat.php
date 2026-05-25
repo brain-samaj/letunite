@@ -1,147 +1,58 @@
 <?php
-
 session_start();
-require "auth.php";
 require "db.php";
 
-$me=$_SESSION['id'];
+if(!isset($_SESSION['id'])){
+    header("Location:index.php");
+    exit;
+}
 
-$users=$db->prepare(
+$me = $_SESSION['id'];
 
-"
-
-SELECT *
-
-FROM users
-
-WHERE id!=?
-
-"
-
-);
-
-$users->execute([$me]);
-
+/* GET ALL USERS YOU HAVE CHATTED WITH */
+$users = $db->prepare("
+    SELECT DISTINCT u.id, u.name, u.profile_pic
+    FROM users u
+    JOIN messages m 
+    ON (m.sender = u.id OR m.receiver = u.id)
+    WHERE (m.sender = ? OR m.receiver = ?)
+    AND u.id != ?
+");
+$users->execute([$me, $me, $me]);
 ?>
 
+<!DOCTYPE html>
 <html>
+<head>
+<link rel="stylesheet" href="style.css">
+<title>Chat</title>
+</head>
 
-<body>
+<body class="home-body">
+
+<div class="top">
+    <h3>Messages</h3>
+    <a href="home.php">Home</a>
+</div>
 
 <div class="feed">
 
-<h2>
+<?php foreach($users as $u): ?>
 
-CHAT
+<a class="chat-user" href="conversation.php?id=<?= $u['id'] ?>">
 
-</h2>
+    <img src="<?= $u['profile_pic'] ? 'uploads/'.$u['profile_pic'] : 'assets/default.png' ?>">
 
-<?php
-
-foreach($users as $u){
-
-$online=
-
-(time()-
-
-(int)$u['last_seen']
-
-)<60;
-
-$unread=$db->prepare(
-
-"
-
-SELECT COUNT(*)
-
-FROM messages
-
-WHERE
-
-sender=?
-
-AND receiver=?
-
-AND seen=0
-
-"
-
-);
-
-$unread->execute([
-
-$u['id'],
-
-$me
-
-]);
-
-$count=$unread->fetchColumn();
-
-?>
-
-<div class="post">
-
-<a href="conversation.php?id=<?=$u['id']?>">
-
-<img
-
-src="<?=profilePic($u)?>"
-
-width="40"
-
-height="40"
-
-style="
-border-radius:50%;
-object-fit:cover;
-vertical-align:middle;
-">
-
-<?=$u['name']?>
+    <div>
+        <b><?= htmlspecialchars($u['name']) ?></b>
+        <p>Tap to chat</p>
+    </div>
 
 </a>
 
-<?=
-
-$online
-
-?
-
-"🟢 Online"
-
-:
-
-"⚫ Offline"
-
-?>
-
-<?php
-
-if($count){
-
-echo
-
-"("
-
-.$count
-
-.")";
-
-}
-
-?>
-
-</div>
-
-<?php
-
-}
-
-?>
+<?php endforeach; ?>
 
 </div>
 
 </body>
-
 </html>

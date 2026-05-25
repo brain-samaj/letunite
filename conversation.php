@@ -1,268 +1,89 @@
 <?php
-
 session_start();
-
 require "db.php";
 
 if(!isset($_SESSION['id'])){
-
-header("Location:index.php");
-
-exit;
-
+    header("Location:index.php");
+    exit;
 }
 
-if(!isset($_GET['id'])){
+$me = $_SESSION['id'];
+$friend = $_GET['id'];
 
-header("Location:chat.php");
+/* mark seen */
+$db->prepare("
+    UPDATE messages SET seen=1
+    WHERE sender=? AND receiver=?
+")->execute([$friend, $me]);
 
-exit;
-}
-
-$me=$_SESSION['id'];
-
-$friend=$_GET['id'];
-
-$db->prepare(
-
-"
-
-UPDATE messages
-
-SET seen=1
-
-WHERE sender=?
-
-AND receiver=?
-
-"
-
-)->execute([
-
-$friend,
-
-$me
-
-]);
-
-$msgs=$db->prepare(
-
-"
-
-SELECT
-
-messages.*,
-
-users.name
-
-FROM messages
-
-JOIN users
-
-ON users.id=
-
-messages.sender
-
-WHERE
-
-(
-
-sender=?
-
-AND receiver=?
-
-)
-
-OR
-
-(
-
-sender=?
-
-AND receiver=?
-
-)
-
-ORDER BY id ASC
-
-"
-
-);
-
-$msgs->execute([
-
-$me,
-
-$friend,
-
-$friend,
-
-$me
-
-]);
-
+$msgs = $db->prepare("
+    SELECT * FROM messages
+    WHERE (sender=? AND receiver=?)
+    OR (sender=? AND receiver=?)
+    ORDER BY id ASC
+");
+$msgs->execute([$me,$friend,$friend,$me]);
 ?>
 
+<!DOCTYPE html>
 <html>
-
 <head>
-
-<link
-rel="stylesheet"
-href="style.css">
-
+<link rel="stylesheet" href="style.css">
+<title>Chat</title>
 </head>
 
-<body>
+<body class="chat-body">
 
-<div class="feed">
+<div class="chat-box">
 
-<?php
+<?php foreach($msgs as $m): ?>
 
-foreach($msgs as $m){
+<div class="msg <?= $m['sender']==$me?'me':'them' ?>">
 
-$mine=
+    <?php if($m['message']): ?>
+        <p><?= htmlspecialchars($m['message']) ?></p>
+    <?php endif; ?>
 
-$m['sender']==$me;
+    <?php if($m['image']): ?>
+        <img src="uploads/<?= $m['image'] ?>" style="max-width:200px;">
+    <?php endif; ?>
 
-?>
+    <?php if($m['video']): ?>
+        <video controls style="max-width:200px;">
+            <source src="uploads/<?= $m['video'] ?>">
+        </video>
+    <?php endif; ?>
 
-<div
-style="
+    <?php if($m['file']): ?>
+        <a href="uploads/<?= $m['file'] ?>" download>📁 Download File</a>
+    <?php endif; ?>
 
-display:flex;
-
-justify-content:
-
-<?=
-
-$mine
-
-?
-
-'flex-end'
-
-:
-
-'flex-start'
-
-?>
-
-;
-
-margin:10px;
-
-">
-
-<div
-style="
-
-max-width:70%;
-
-padding:10px;
-
-border-radius:12px;
-
-background:
-
-<?=
-
-$mine
-
-?
-
-'#DCF8C6'
-
-:
-
-'#eee'
-
-?>
-
-;
-
-">
-
-<?php
-
-if(!empty($m['message'])){
-
-echo htmlspecialchars(
-
-$m['message']
-
-);
-
-}
-
-if(!empty($m['image'])){
-
-?>
-
-<br>
-
-<img
-
-src="uploads/<?=$m['image']?>"
-
-width="200">
-
-<?php
-
-}
-
-?>
+    <?php if($m['audio']): ?>
+        <audio controls>
+            <source src="uploads/<?= $m['audio'] ?>">
+        </audio>
+    <?php endif; ?>
 
 </div>
 
+<?php endforeach; ?>
+
 </div>
 
-<?php
+<!-- SEND FORM -->
+<form action="send.php" method="POST" enctype="multipart/form-data" class="chat-form">
 
-}
+    <input type="hidden" name="receiver" value="<?= $friend ?>">
 
-?>
+    <input type="text" name="message" placeholder="Message">
 
-<form
+    <input type="file" name="image" accept="image/*">
+    <input type="file" name="video" accept="video/*">
+    <input type="file" name="file">
+    <input type="file" name="audio" accept="audio/*">
 
-action="send.php"
-
-method="POST"
-
-enctype="multipart/form-data"
-
->
-
-<input
-
-type="hidden"
-
-name="to"
-
-value="<?=$friend?>">
-
-<input
-
-name="message"
-
-placeholder="Type message">
-
-<input
-
-type="file"
-
-name="image">
-
-<button>
-
-SEND
-
-</button>
-
+    <button>Send</button>
 </form>
 
-</div>
-
 </body>
-
 </html>

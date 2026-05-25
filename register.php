@@ -1,231 +1,77 @@
 <?php
-
 session_start();
-
 require "db.php";
 
-$error="";
-
-if(isset($_POST["signup"])){
-
-$name=trim($_POST["name"]);
-
-$email=trim($_POST["email"]);
-
-$password=$_POST["password"];
-
-if(strlen($password)<6){
-
-$error="Password must be at least 6 characters";
-
-}else{
-
-$pass=password_hash(
-
-$password,
-
-PASSWORD_DEFAULT
-
-);
-
-$profile="";
-
-if(
-
-!empty(
-
-$_FILES[
-"profile_pic"
-]["name"]
-
-)
-
-){
-
-$file=
-
-time()."_".
-
-basename(
-
-$_FILES[
-"profile_pic"
-]["name"]
-
-);
-
-move_uploaded_file(
-
-$_FILES[
-"profile_pic"
-]["tmp_name"],
-
-"uploads/".$file
-
-);
-
-$profile=$file;
-
+if(isset($_SESSION['id'])){
+    header("Location: home.php");
+    exit;
 }
 
-try{
+$error = "";
 
-$stmt=$db->prepare(
+if($_POST){
 
-"
+    $name = $_POST['name'];
+    $email = $_POST['email'];
+    $password = password_hash($_POST['password'], PASSWORD_DEFAULT);
 
-INSERT INTO users(
+    /* check if email exists */
+    $check = $db->prepare("SELECT id FROM users WHERE email=?");
+    $check->execute([$email]);
 
-name,
+    if($check->fetch()){
+        $error = "Email already exists";
+    } else {
 
-email,
+        $stmt = $db->prepare("
+            INSERT INTO users(name,email,password)
+            VALUES(?,?,?)
+        ");
 
-password,
+        $stmt->execute([$name,$email,$password]);
 
-profile_pic
-
-)
-
-VALUES(
-
-?,?,?,?
-
-)
-
-"
-
-);
-
-$stmt->execute([
-
-$name,
-
-$email,
-
-$pass,
-
-$profile
-
-]);
-
-header(
-
-"Location:index.php"
-
-);
-
-exit;
-
+        header("Location: login.php");
+        exit;
+    }
 }
-
-catch(Exception $e){
-
-$error="Email already exists";
-
-}
-
-}
-
-}
-
 ?>
 
+<!DOCTYPE html>
 <html>
-
 <head>
-
-<link rel="stylesheet"
-
-href="style.css">
-
+    <title>LETUNITE Register</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 
-<body>
+<body class="auth-body">
 
-<div class="box">
+<div class="auth-box">
 
-<h1>
+    <h2>Create Account</h2>
 
-Create Account
+    <?php if($error): ?>
+        <p style="color:red; text-align:center;">
+            <?= $error ?>
+        </p>
+    <?php endif; ?>
 
-</h1>
+    <form method="POST">
 
-<form
+        <input type="text" name="name" placeholder="Full Name" required>
 
-method="POST"
+        <input type="text" name="email" placeholder="Email" required>
 
-enctype="multipart/form-data"
+        <input type="password" name="password" placeholder="Password" required>
 
->
+        <button type="submit">Sign Up</button>
 
-<input
+    </form>
 
-name="name"
-
-placeholder="Display Name"
-
-required>
-
-<input
-
-name="email"
-
-type="email"
-
-placeholder="Valid Gmail"
-
-required>
-
-<input
-
-name="password"
-
-type="password"
-
-placeholder="Password"
-
-required>
-
-<label>
-
-Profile Picture
-
-</label>
-
-<input
-
-type="file"
-
-name="profile_pic"
-
-accept="image/*">
-
-<button
-
-name="signup"
-
->
-
-Create Account
-
-</button>
-
-</form>
-
-<p>
-
-<?=$error?>
-
-</p>
-
-<a href="index.php">
-
-Back
-
-</a>
+    <p style="text-align:center; margin-top:10px;">
+        Already have an account? <a href="login.php" style="color:#00bfff;">Login</a>
+    </p>
 
 </div>
 
 </body>
-
 </html>

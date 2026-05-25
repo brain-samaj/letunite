@@ -1,135 +1,66 @@
 <?php
-
 session_start();
-
 require "db.php";
 
-$error="";
-
-if(isset($_POST["login"])){
-
-$email=$_POST["email"];
-
-$password=$_POST["password"];
-
-$stmt=$db->prepare(
-
-"SELECT * FROM users
-
-WHERE email=?"
-
-);
-
-$stmt->execute([
-
-$email
-
-]);
-
-$user=$stmt->fetch();
-
-if(
-
-$user &&
-
-password_verify(
-
-$password,
-
-$user["password"]
-
-)
-
-){
-
-$_SESSION["id"]=$user["id"];
-
-$_SESSION["name"]=$user["name"];
-
-header(
-
-"Location:home.php"
-
-);
-
-exit;
-
+if(isset($_SESSION['id'])){
+    header("Location: home.php");
+    exit;
 }
 
-$error="Wrong login";
+$error = "";
 
+if($_POST){
+    $email = $_POST['email'];
+    $password = $_POST['password'];
+
+    $stmt = $db->prepare("SELECT * FROM users WHERE email=?");
+    $stmt->execute([$email]);
+    $user = $stmt->fetch();
+
+    if($user && password_verify($password, $user['password'])){
+        $_SESSION['id'] = $user['id'];
+        header("Location: home.php");
+        exit;
+    } else {
+        $error = "Invalid email or password";
+    }
 }
-
 ?>
 
+<!DOCTYPE html>
 <html>
-
 <head>
-
-<link rel="stylesheet"
-
-href="style.css">
-
+    <title>LETUNITE Login</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 
-<body>
+<body class="auth-body">
 
-<div class="box">
+<div class="auth-box">
 
-<h1>
+    <h2>Login</h2>
 
-Sign In
+    <?php if($error): ?>
+        <p style="color:red; text-align:center;">
+            <?= $error ?>
+        </p>
+    <?php endif; ?>
 
-</h1>
+    <form method="POST">
 
-<form method="POST">
+        <input type="text" name="email" placeholder="Email" required>
 
-<input
+        <input type="password" name="password" placeholder="Password" required>
 
-name="email"
+        <button type="submit">Login</button>
 
-type="email"
+    </form>
 
-placeholder="Email"
-
-required>
-
-<input
-
-name="password"
-
-type="password"
-
-placeholder="Password"
-
-required>
-
-<button
-
-name="login"
-
->
-
-Login
-
-</button>
-
-</form>
-
-<p>
-
-<?=$error?>
-
-</p>
-
-<a href="index.php">
-
-Back
-
-</a>
+    <p style="text-align:center; margin-top:10px;">
+        Don't have an account? <a href="register.php" style="color:#00bfff;">Register</a>
+    </p>
 
 </div>
 
 </body>
-
 </html>

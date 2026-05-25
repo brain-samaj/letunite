@@ -1,488 +1,213 @@
 <?php
-
 session_start();
 
 if(!isset($_SESSION['id'])){
-header("Location: index.php");
-exit;
+    header("Location: index.php");
+    exit;
 }
-
-require "auth.php";
 
 require "db.php";
 
-$db->prepare(
-
-"UPDATE users
-SET last_seen=?
-WHERE id=?"
-
-)->execute([
-
-time(),
-
-$_SESSION['id']
-
+/* UPDATE LAST SEEN */
+$db->prepare("
+    UPDATE users
+    SET last_seen=?
+    WHERE id=?
+")->execute([
+    time(),
+    $_SESSION['id']
 ]);
 
-require "db.php";
-
-if(!isset($_SESSION['id'])){
-
-header("Location:index.php");
-
-exit;
-
-}
-
-/* POSTS */
-
-if(!empty($_GET['search'])){
-
-$s="%".$_GET['search']."%";
-
-$posts=$db->prepare(
-
-"
-
-SELECT
-posts.*,
-users.name
-
-FROM posts
-
-JOIN users
-
-ON users.id=posts.user_id
-
-WHERE
-
-users.name LIKE ?
-
-OR
-
-posts.content LIKE ?
-
-ORDER BY posts.id DESC
-
-"
-
-);
-
-$posts->execute([
-
-$s,
-
-$s
-
-]);
-
-}
-
-else{
-
-$posts=$db->query(
-
-"
-
-SELECT
-
-posts.*,
-
-users.name,
-
-users.profile_pic
-
-FROM posts
-
-JOIN users
-
-ON users.id=posts.user_id
-
-ORDER BY posts.id DESC
-
-"
-
-);
-
-}
-
+/* FETCH POSTS */
+$posts = $db->query("
+    SELECT
+        posts.*,
+        users.name,
+        users.profile_pic
+    FROM posts
+    JOIN users ON users.id = posts.user_id
+    ORDER BY posts.id DESC
+");
 ?>
 
+<!DOCTYPE html>
 <html>
-
 <head>
-
-<link
-rel="stylesheet"
-href="style.css">
-
-<title>
-
-LET UNITE
-
-</title>
-
+    <title>LETUNITE</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 
-<body>
+<body class="home-body">
 
+<!-- ================= TOP BAR ================= -->
 <div class="top">
-
-LET UNITE
-
-<a
-href="logout.php">
-
-Logout
-
-</a>
-
+    <div class="logo">LETUNITE</div>
+    <a href="logout.php">Logout</a>
 </div>
 
+<!-- ================= MENU ================= -->
 <div class="menu">
-
-<a href="home.php">
-
-HOME
-
-</a>
-<a href="profile.php">
-
-PROFILE
-
-</a>
-
-<a href="connect.php">
-
-CONNECT
-
-</a>
-
-<a href="chat.php">
-
-CHAT
-
-</a>
-
-<a href="feeds.php">
-
-FEEDS
-
-</a>
-
+    <a href="home.php">🏠 Home</a>
+    <a href="profile.php">👤 Profile</a>
+    <a href="connect.php">🤝 Connect</a>
+    <a href="chat.php">💬 Chat</a>
 </div>
 
+<!-- ================= CREATE POST ================= -->
+<div class="create-post">
+    <form action="post.php" method="POST" enctype="multipart/form-data">
+        <textarea name="content" placeholder="What's on your mind?" required></textarea>
+        <input type="file" name="image">
+        <button type="submit">Post</button>
+    </form>
+</div>
+
+<!-- ================= FEED ================= -->
 <div class="feed">
 
-<h2>
+<?php foreach($posts as $p): ?>
 
-Welcome
+    <div class="post-card">
 
-<?=htmlspecialchars(
-$_SESSION['name']
-)?>
+        <!-- USER INFO -->
+        <div class="post-header">
+            <img src="<?= $p['profile_pic'] ? 'uploads/'.$p['profile_pic'] : 'assets/default.png' ?>">
+            <div>
+                <b><?= htmlspecialchars($p['name']) ?></b>
+                <small>Now</small>
+            </div>
+        </div>
 
-🔥
+        <!-- POST CONTENT -->
+        <div class="post-body">
+            <?= nl2br(htmlspecialchars($p['content'])) ?>
+        </div>
+<!-- LIKE COUNT -->
+<?php
+$like = $db->prepare("SELECT COUNT(*) FROM likes WHERE post_id=?");
+$like->execute([$p['id']]);
+$likes = $like->fetchColumn();
+?>
 
-</h2>
+<!-- COMMENT COUNT -->
+<?php
+$com = $db->prepare("
+SELECT COUNT(*)
+FROM comments
+WHERE post_id=?
+");
 
-<form method="GET">
+$com->execute([
+$p['id']
+]);
 
-<input
-name="search"
+$comments = $com->fetchColumn();
+?>
+<!-- SHARE COUNT -->
+<?php
+$sh = $db->prepare("SELECT COUNT(*) FROM shares WHERE post_id=?");
+$sh->execute([$p['id']]);
+$shares = $sh->fetchColumn();
+?>
 
-placeholder="Search users or posts">
+<!-- ACTION BUTTONS -->
+<!-- ACTION BUTTONS -->
+<div class="post-actions">
 
-<button>
+    <a href="like.php?id=<?= $p['id'] ?>">
+        👍 Like (<?= $likes ?>)
+    </a>
 
-SEARCH
+    <a href="#comments<?= $p['id'] ?>">
+        💬 Comment (<?= $comments ?>)
+    </a>
 
-</button>
+    <a href="share.php?id=<?= $p['id'] ?>">
+        🔁 Share (<?= $shares ?>)
+    </a>
+
+</div>
+
+<!-- COMMENT FORM -->
+<form action="comment.php" method="POST" class="comment-form">
+
+    <input type="hidden" name="post_id" value="<?= $p['id'] ?>">
+    <input type="hidden" name="parent_id" value="0">
+
+    <input type="text" name="comment" placeholder="Write a comment..." required>
+
+    <button type="submit">Comment</button>
 
 </form>
-
-<form action="post.php" method="POST" enctype="multipart/form-data">
-
-<textarea
-
-<input type="file" name="image" accept="image/*">
-
-<?php if(!empty($post['image'])): ?>
-
-<img src="uploads/<?=$post['image']?>" width="250">
-
-<?php endif; ?>
-
-name="content"
-
-placeholder=
-
-"Share something..."
-
-required>
-
-</textarea>
-
-<button>
-
-POST
-
-</button>
-
-</form>
-
 <?php
 
-foreach(
-$posts
-as $post
-){
-
-/* LIKE COUNT */
-
-$likes=$db->query(
-
-"
-
-SELECT COUNT(*)
-
-FROM likes
-
-WHERE post_id="
-
-.$post['id']
-
-)->fetchColumn();
-
-/* COMMENTS */
-
-$comments=$db->prepare(
-
-"
-
+$comments=$db->prepare("
 SELECT
-
 comments.*,
-
 users.name
-
 FROM comments
-
 JOIN users
-
-ON users.id=
-
-comments.user_id
-
-WHERE post_id=?
-
-ORDER BY
-
-comments.id ASC
-
-"
-
-);
+ON users.id=comments.user_id
+WHERE
+post_id=?
+AND
+parent_id=0
+ORDER BY id DESC
+");
 
 $comments->execute([
-
-$post['id']
-
+$p['id']
 ]);
 
 ?>
 
-<div class="post">
 
-<h3>
+<?php foreach($comments as $c): ?>
 
-<a href="user.php?id=<?=$post['user_id']?>">
-
-<?php
-
-$pic=
-
-!empty($post['profile_pic'])
-
-?
-
-"uploads/".$post['profile_pic']
-
-:
-
-"assets/default.png";
-
-?>
-
-<div
-style="
-display:flex;
-align-items:center;
-gap:10px;
-">
-
-<img
-
-src="<?=$pic?>"
-
-width="45"
-
-height="45"
-
-style="
-border-radius:50%;
-object-fit:cover;
-">
-
-<a
-href="user.php?id=<?=$post['user_id']?>">
-
-<?php
-
-$pic=
-
-!empty(
-
-$post['profile_pic']
-
-)
-
-?
-
-"uploads/".
-$post['profile_pic']
-
-:
-
-"assets/default.png";
-
-?>
-
-<div
-style="
-
-display:flex;
-
-align-items:center;
-
-gap:10px;
-
-">
-
-<img
-
-src="<?=$pic?>"
-
-width="45"
-
-height="45"
-
-style="
-
-border-radius:50%;
-
-object-fit:cover;
-">
+<div class="comment-box">
 
 <b>
 
-<?=htmlspecialchars($post['name'])?>
+<?= htmlspecialchars(
+$c['name']
+) ?>
 
 </b>
+
+<?= htmlspecialchars(
+$c['comment']
+) ?>
+
+
+<?php
+
+$likes=$db->prepare("
+SELECT COUNT(*)
+FROM comment_likes
+WHERE comment_id=?
+");
+
+$likes->execute([
+$c['id']
+]);
+
+$count=$likes->fetchColumn();
+
+?>
+
+<div>
+
+<a
+href="comment.php?like=<?= $c['id'] ?>">
+
+❤️ <?= $count ?>
+
+</a>
 
 </div>
 
-<p>
 
-<?=nl2br(
-
-htmlspecialchars(
-
-$post['content']
-
-)
-
-)?>
-
-</p>
-
-<small>
-
-<?=htmlspecialchars(
-
-$post['created']
-
-)?>
-
-</small>
-
-<br><br>
-
-❤️
-
-<?=$likes?>
-
-Likes
-
-|
-
-<a
-href=
-
-"like.php?id=
-
-<?=$post['id']?>"
-
->
-
-LIKE
-
-</a>
-
-|
-
-<a
-href=
-
-"share.php?id=
-
-<?=$post['id']?>"
-
->
-
-SHARE
-
-</a>
-
-<hr>
-
-<?php
-
-foreach(
-$comments
-as $c
-){
-
-?>
-
-<p>
-
-<b>
-
-<?=htmlspecialchars(
-$c['name']
-)?>
-
-</b>
-
-:
-
-<?=htmlspecialchars(
-$c['comment']
-)?>
-
-</p>
+<!-- REPLY FORM -->
 
 <form
 action="comment.php"
@@ -490,17 +215,170 @@ method="POST">
 
 <input
 type="hidden"
-name="post"
-value="<?=$post['id']?>">
+name="post_id"
+value="<?= $p['id'] ?>">
 
 <input
 type="hidden"
-name="parent"
-value="<?=$c['id']?>">
+name="parent_id"
+value="<?= $c['id'] ?>">
 
 <input
+type="text"
 name="comment"
-placeholder="Reply">
+placeholder="Reply..."
+required>
+
+</form>
+
+
+<?php
+
+$reply=$db->prepare("
+SELECT
+comments.*,
+users.name
+FROM comments
+JOIN users
+ON users.id=comments.user_id
+WHERE parent_id=?
+");
+
+$reply->execute([
+$c['id']
+]);
+
+?>
+
+
+<?php foreach($reply as $r): ?>
+
+<div
+style="
+margin-left:25px;
+font-size:13px;
+">
+
+↳
+
+<b>
+
+<?= htmlspecialchars(
+$r['name']
+) ?>
+
+</b>
+
+<?= htmlspecialchars(
+$r['comment']
+) ?>
+
+</div>
+
+<?php endforeach; ?>
+
+</div>
+
+<?php endforeach; ?>
+
+    <a href="like.php?id=<?= $p['id'] ?>">
+        👍 Like (<?= $likes ?>)
+    </a>
+
+    <a href="comment.php?id=<?= $p['id'] ?>">
+        💬 Comment (<?= $comments ?>)
+    </a>
+
+    <a href="share.php?id=<?= $p['id'] ?>">
+        🔁 Share (<?= $shares ?>)
+    </a>
+
+</div>
+      
+<!-- ================= COMMENTS DISPLAY ================= -->
+
+<?php
+$c = $db->prepare("
+    SELECT comments.*, users.name
+    FROM comments
+    JOIN users
+    ON users.id = comments.user_id
+    WHERE post_id=? AND parent_id=0
+    ORDER BY comments.id DESC
+");
+
+$c->execute([
+    $p['id']
+]);
+
+$allComments = $c->fetchAll();
+?>
+
+<?php foreach($allComments as $cmt): ?>
+
+<div style="
+margin:5px 0;
+padding:8px;
+background:#f1f1f1;
+border-radius:8px;
+">
+
+<b>
+
+<?= htmlspecialchars($cmt['name']) ?>:
+
+</b>
+
+<?= htmlspecialchars($cmt['comment']) ?>
+
+<?php
+
+$clike = $db->prepare("
+SELECT COUNT(*)
+FROM comment_likes
+WHERE comment_id=?
+");
+
+$clike->execute([
+$cmt['id']
+]);
+
+$clikes = $clike->fetchColumn();
+
+?>
+
+<div style="font-size:12px; margin-top:5px;">
+
+<a href="comment.php?like=<?= $cmt['id'] ?>">
+
+❤️ <?= $clikes ?> Like
+
+</a>
+
+</div>
+
+
+<!-- REPLY FORM -->
+
+<form
+action="comment.php"
+method="POST">
+
+<input
+type="hidden"
+name="post_id"
+value="<?= $p['id'] ?>">
+
+<input
+type="hidden"
+name="parent_id"
+value="<?= $cmt['id'] ?>">
+
+<input
+type="text"
+name="comment"
+placeholder="Reply..."
+required>
 
 <button>
 
@@ -510,60 +388,15 @@ Reply
 
 </form>
 
-<?php
+</div>
 
-}
-
-?>
-
-<form
-
-action="comment.php"
-
-method="POST"
-
->
-
-<input
-
-type="hidden"
-
-name="post"
-
-value=
-
-"<?=$post['id']?>"
-
->
-
-<input
-
-name="comment"
-
-placeholder=
-
-"Write comment..."
-
-required>
-
-<button>
-
-COMMENT
-
-</button>
-
-</form>
+<?php endforeach; ?>
 
 </div>
 
-<?php
-
-}
-
-?>
+<?php endforeach; ?>
 
 </div>
 
 </body>
-
 </html>
