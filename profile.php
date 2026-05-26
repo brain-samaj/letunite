@@ -11,7 +11,7 @@ if (!isset($_SESSION['id'])) {
 
 $id = $_SESSION['id'];
 
-/* Update last seen safely */
+/* Update last seen */
 $db->prepare("
 UPDATE users
 SET last_seen = ?
@@ -21,18 +21,18 @@ WHERE id = ?
     $id
 ]);
 
-/* Get user */
-$user = $db->query("
-SELECT * FROM users WHERE id = $id
-")->fetch();
+/* Get user safely */
+$stmt = $db->prepare("SELECT * FROM users WHERE id = ?");
+$stmt->execute([$id]);
+$user = $stmt->fetch();
 
 ?>
 
 <!DOCTYPE html>
 <html>
 <head>
-<link rel="stylesheet" href="style.css">
-<title>Profile</title>
+    <link rel="stylesheet" href="style.css">
+    <title>Profile</title>
 </head>
 
 <body>
@@ -41,9 +41,13 @@ SELECT * FROM users WHERE id = $id
 
 <h2>MY PROFILE</h2>
 
-<!-- PROFILE IMAGE -->
+<!-- PROFILE IMAGE (CLOUDINARY FIX) -->
 <?php if (!empty($user['profile_pic'])): ?>
-    <img src="uploads/<?= htmlspecialchars($user['profile_pic']) ?>" width="120">
+    <img 
+        src="<?= htmlspecialchars($user['profile_pic']) ?>" 
+        width="120" 
+        style="border-radius:50%; object-fit:cover;"
+    >
 <?php endif; ?>
 
 <!-- PROFILE FORM -->
@@ -53,20 +57,20 @@ SELECT * FROM users WHERE id = $id
 
 <input name="country"
 placeholder="Country"
-value="<?= $user['country'] ?? '' ?>">
+value="<?= htmlspecialchars($user['country'] ?? '') ?>">
 
 <input name="city"
 placeholder="City"
-value="<?= $user['city'] ?? '' ?>">
+value="<?= htmlspecialchars($user['city'] ?? '') ?>">
 
 <input type="date"
 name="dob"
-value="<?= $user['dob'] ?? '' ?>">
+value="<?= htmlspecialchars($user['dob'] ?? '') ?>">
 
 <!-- GENDER -->
 <select name="gender">
-    <option value="<?= $user['gender'] ?? '' ?>">
-        <?= $user['gender'] ?? 'Select Gender' ?>
+    <option value="<?= htmlspecialchars($user['gender'] ?? '') ?>">
+        <?= htmlspecialchars($user['gender'] ?? 'Select Gender') ?>
     </option>
     <option value="Male">Male</option>
     <option value="Female">Female</option>
@@ -74,8 +78,8 @@ value="<?= $user['dob'] ?? '' ?>">
 
 <!-- MARITAL STATUS -->
 <select name="marital_status">
-    <option value="<?= $user['marital_status'] ?? '' ?>">
-        <?= $user['marital_status'] ?? 'Select Status' ?>
+    <option value="<?= htmlspecialchars($user['marital_status'] ?? '') ?>">
+        <?= htmlspecialchars($user['marital_status'] ?? 'Select Status') ?>
     </option>
     <option value="Single">Single</option>
     <option value="Married">Married</option>
