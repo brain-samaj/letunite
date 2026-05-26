@@ -1,100 +1,46 @@
 <?php
 
-/* =========================
-   DATABASE CONNECTION
-========================= */
+/*
+Render PostgreSQL Environment Variables:
 
-$dbPath = __DIR__ . "/letunite.db";
+DB_HOST
+DB_NAME
+DB_USER
+DB_PASS
+DB_PORT
 
-$db = new PDO("sqlite:" . $dbPath);
+*/
 
-$db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-$db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+$host = getenv("DB_HOST");
+$dbname = getenv("DB_NAME");
+$user = getenv("DB_USER");
+$pass = getenv("DB_PASS");
+$port = getenv("DB_PORT") ?: "5432";
 
-/* =========================
-   AUTO DATABASE SETUP
-   (RUNS EVERY TIME SAFELY)
-========================= */
+try {
 
-/* USERS */
-$db->exec("
-CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY,
-    name TEXT,
-    email TEXT UNIQUE,
-    password TEXT,
-    joined DATETIME DEFAULT CURRENT_TIMESTAMP,
-    profile_pic TEXT DEFAULT '',
-    last_seen DATETIME DEFAULT CURRENT_TIMESTAMP
-)");
+    $db = new PDO(
+        "pgsql:host=$host;port=$port;dbname=$dbname",
+        $user,
+        $pass
+    );
 
-/* POSTS */
-$db->exec("
-CREATE TABLE IF NOT EXISTS posts (
-    id INTEGER PRIMARY KEY,
-    user_id INTEGER,
-    content TEXT,
-    created DATETIME DEFAULT CURRENT_TIMESTAMP
-)");
+    $db->setAttribute(
+        PDO::ATTR_ERRMODE,
+        PDO::ERRMODE_EXCEPTION
+    );
 
-/* COMMENTS */
-$db->exec("
-CREATE TABLE IF NOT EXISTS comments (
-    id INTEGER PRIMARY KEY,
-    user_id INTEGER,
-    post_id INTEGER,
-    comment TEXT,
-    created DATETIME DEFAULT CURRENT_TIMESTAMP
-)");
+    $db->setAttribute(
+        PDO::ATTR_DEFAULT_FETCH_MODE,
+        PDO::FETCH_ASSOC
+    );
 
-/* LIKES */
-$db->exec("
-CREATE TABLE IF NOT EXISTS likes (
-    id INTEGER PRIMARY KEY,
-    user_id INTEGER,
-    post_id INTEGER
-)");
+} catch(PDOException $e){
 
-/* SHARES */
-$db->exec("
-CREATE TABLE IF NOT EXISTS shares (
-    id INTEGER PRIMARY KEY,
-    user_id INTEGER,
-    post_id INTEGER,
-    created DATETIME DEFAULT CURRENT_TIMESTAMP
-)");
+    die(
+        "Database connection failed: "
+        .$e->getMessage()
+    );
 
-/* CONNECTS */
-$db->exec("
-CREATE TABLE IF NOT EXISTS connects (
-    id INTEGER PRIMARY KEY,
-    sender INTEGER,
-    receiver INTEGER,
-    status TEXT
-)");
-
-/* MESSAGES (CHAT SYSTEM) */
-$db->exec("
-CREATE TABLE IF NOT EXISTS messages (
-    id INTEGER PRIMARY KEY,
-    sender INTEGER,
-    receiver INTEGER,
-    message TEXT,
-    image TEXT,
-    video TEXT,
-    audio TEXT,
-    voice TEXT,
-    created DATETIME DEFAULT CURRENT_TIMESTAMP,
-    seen INTEGER DEFAULT 0
-)");
-
-/* FEEDS (OPTIONAL FEATURE) */
-$db->exec("
-CREATE TABLE IF NOT EXISTS feeds (
-    id INTEGER PRIMARY KEY,
-    user_id INTEGER,
-    text TEXT,
-    created DATETIME DEFAULT CURRENT_TIMESTAMP
-)");
-
+}
 ?>

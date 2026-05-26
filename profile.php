@@ -1,41 +1,38 @@
 <?php
 
 session_start();
-
 require "db.php";
 
-$db->prepare(
+/* Redirect if not logged in */
+if (!isset($_SESSION['id'])) {
+    header("Location:index.php");
+    exit;
+}
 
-"UPDATE users
-SET last_seen=?
-WHERE id=?"
+$id = $_SESSION['id'];
 
-)->execute([
-
-time(),
-
-$_SESSION['id']
-
+/* Update last seen safely */
+$db->prepare("
+UPDATE users
+SET last_seen = ?
+WHERE id = ?
+")->execute([
+    time(),
+    $id
 ]);
 
-require "db.php";
-
-$id=$_SESSION['id'];
-
-$user=$db->query(
-"SELECT * FROM users
-WHERE id=".$id
-)->fetch();
+/* Get user */
+$user = $db->query("
+SELECT * FROM users WHERE id = $id
+")->fetch();
 
 ?>
 
+<!DOCTYPE html>
 <html>
-
 <head>
-
-<link rel="stylesheet"
-href="style.css">
-
+<link rel="stylesheet" href="style.css">
+<title>Profile</title>
 </head>
 
 <body>
@@ -44,98 +41,51 @@ href="style.css">
 
 <h2>MY PROFILE</h2>
 
-<?php
+<!-- PROFILE IMAGE -->
+<?php if (!empty($user['profile_pic'])): ?>
+    <img src="uploads/<?= htmlspecialchars($user['profile_pic']) ?>" width="120">
+<?php endif; ?>
 
-if(!empty($user['profile_pic'])){
+<!-- PROFILE FORM -->
+<form action="upload_profile.php" method="POST" enctype="multipart/form-data">
 
-echo "
+<input type="file" name="profile_pic">
 
-<img
-src='uploads/
-
-".$user['profile_pic']."
-
-'
-width='120'>
-
-";
-
-}
-
-?>
-
-<form
-action="upload_profile.php"
-method="POST"
-enctype="multipart/form-data">
-
-<input
-type="file"
-name="profile_pic">
-
-<input
-name="country"
+<input name="country"
 placeholder="Country"
-value="<?= $user['country'] ?>">
+value="<?= $user['country'] ?? '' ?>">
 
-<input
-name="city"
+<input name="city"
 placeholder="City"
-value="<?= $user['city'] ?>">
+value="<?= $user['city'] ?? '' ?>">
 
-<input
-type="date"
+<input type="date"
 name="dob"
-value="<?= $user['dob'] ?>">
+value="<?= $user['dob'] ?? '' ?>">
 
-<select
-name="gender">
-
-<option>
-
-<?= $user['gender'] ?>
-
-</option>
-
-<option>
-Male
-</option>
-
-<option>
-Female
-</option>
-
+<!-- GENDER -->
+<select name="gender">
+    <option value="<?= $user['gender'] ?? '' ?>">
+        <?= $user['gender'] ?? 'Select Gender' ?>
+    </option>
+    <option value="Male">Male</option>
+    <option value="Female">Female</option>
 </select>
 
-<select
-name="marital_status">
-
-<option>
-
-<?= $user['marital_status'] ?>
-
-</option>
-
-<option>
-Single
-</option>
-
-<option>
-Married
-</option>
-
+<!-- MARITAL STATUS -->
+<select name="marital_status">
+    <option value="<?= $user['marital_status'] ?? '' ?>">
+        <?= $user['marital_status'] ?? 'Select Status' ?>
+    </option>
+    <option value="Single">Single</option>
+    <option value="Married">Married</option>
 </select>
 
-<button>
-
-SAVE PROFILE
-
-</button>
+<button type="submit">SAVE PROFILE</button>
 
 </form>
 
 </div>
 
 </body>
-
 </html>
