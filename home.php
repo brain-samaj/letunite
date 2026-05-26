@@ -148,6 +148,8 @@ cursor:pointer;
 margin-top:10px;
 "
 onclick="viewImage(this.src)">
+"
+>
 
 <?php endif; ?>
 
@@ -159,7 +161,8 @@ style="
 max-width:100%;
 border-radius:10px;
 margin-top:10px;
-">
+"
+>
 
 <source
 src="<?= htmlspecialchars($p['video']) ?>"

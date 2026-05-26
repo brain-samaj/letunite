@@ -3,97 +3,138 @@
 session_start();
 
 require "db.php";
+
 require "cloudinary.php";
 
 if(!isset($_SESSION['id'])){
-    header("Location:index.php");
-    exit;
+
+header("Location:index.php");
+
+exit;
+
 }
 
-$user = $_SESSION['id'];
+$user =
+$_SESSION['id'];
 
-$content = trim($_POST['content'] ?? "");
+$content =
+trim(
+$_POST['content']
+?? ""
+);
 
-$image = "";
-$video = "";
+$image="";
+
+$video="";
 
 /* IMAGE */
 
 if(
-isset($_FILES['image']) &&
-$_FILES['image']['tmp_name'] != ""
+
+isset($_FILES['image'])
+
+&&
+
+$_FILES['image']['tmp_name']
+
+!=""
+
 ){
 
-$image = uploadImage(
+$image=
+
+uploadImage(
+
 $_FILES['image']['tmp_name']
+
 );
 
 }
 
-/* VIDEO (MAX 60 SEC) */
+/* VIDEO */
 
 if(
-isset($_FILES['video']) &&
-$_FILES['video']['tmp_name'] != ""
+
+isset($_FILES['video'])
+
+&&
+
+$_FILES['video']['tmp_name']
+
+!=""
+
 ){
 
-$seconds = 0;
+/* 60MB LIMIT */
 
 if(
-function_exists(
-'ffprobe'
-)
-){
 
-$seconds = 0;
-
-}
-
-/*
-Temporary size check
-(Adjust later if needed)
-*/
-
-if(
 $_FILES['video']['size']
+
 >
-50*1024*1024
+
+60*1024*1024
+
 ){
 
 die(
+
 "Video too large"
+
 );
 
 }
 
-/* Upload video */
+$video=
 
-$result =
-\Cloudinary\Uploader::upload(
+uploadVideo(
 
-$_FILES['video']['tmp_name'],
-
-[
-"resource_type"=>"video",
-"folder"=>"letunite_videos"
-]
+$_FILES['video']['tmp_name']
 
 );
 
-$video =
-$result['secure_url'];
+}
+
+/* REQUIRE CONTENT */
+
+if(
+
+$content==""
+
+&&
+
+$image==""
+
+&&
+
+$video==""
+
+){
+
+header(
+
+"Location:home.php"
+
+);
+
+exit;
 
 }
 
-$stmt = $db->prepare(
+$stmt=
+
+$db->prepare(
 
 "
 
 INSERT INTO posts(
 
 user_id,
+
 content,
+
 image,
+
 video
 
 )
@@ -111,14 +152,19 @@ VALUES(
 $stmt->execute([
 
 $user,
+
 $content,
+
 $image,
+
 $video
 
 ]);
 
 header(
+
 "Location:home.php"
+
 );
 
 exit;

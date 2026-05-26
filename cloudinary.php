@@ -1,29 +1,69 @@
 <?php
 
-require __DIR__ . '/vendor/autoload.php';
+require 'vendor/autoload.php';
 
-use Cloudinary\Configuration\Configuration;
-use Cloudinary\Api\Upload\UploadApi;
+use Cloudinary\Cloudinary;
 
-/* CONFIGURE CLOUDINARY */
-Configuration::instance([
-    'cloud' => [
-        'cloud_name' => 'djngtqjs8',
-        'api_key' => '192215628574648',
-        'api_secret' => '28DaLWm5wjH3EQ5cvYYZscSHh5I',
-    ],
-    'url' => [
-        'secure' => true
-    ]
+$cloudinary = new Cloudinary([
+
+'cloud'=>[
+
+'cloud_name'=>$_ENV['CLOUDINARY_CLOUD_NAME'],
+
+'api_key'=>$_ENV['CLOUDINARY_API_KEY'],
+
+'api_secret'=>$_ENV['CLOUDINARY_API_SECRET']
+
+],
+
+'url'=>[
+'secure'=>true
+]
+
 ]);
 
-/* UPLOAD FUNCTION */
-function uploadImage($tmpFile) {
-    $result = (new UploadApi())->upload($tmpFile, [
-        "folder" => "letunite"
-    ]);
+function uploadImage($tmpFile){
 
-    return $result['secure_url'];
+global $cloudinary;
+
+$result =
+$cloudinary
+->uploadApi()
+->upload(
+
+$tmpFile,
+
+[
+'folder'=>'letunite_images'
+]
+
+);
+
+return $result['secure_url'];
+
+}
+
+function uploadVideo($tmpFile){
+
+global $cloudinary;
+
+$result =
+$cloudinary
+->uploadApi()
+->upload(
+
+$tmpFile,
+
+[
+'resource_type'=>'video',
+
+'folder'=>'letunite_videos'
+]
+
+);
+
+return $result['secure_url'];
+
 }
 
 ?>
