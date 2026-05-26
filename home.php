@@ -130,11 +130,17 @@ function viewImage(src){
 
 <!-- POST IMAGE (CLOUDINARY FIX) -->
 <?php if(!empty($p['image'])): ?>
-    <img 
-        src="<?= htmlspecialchars($p['image']) ?>" 
-        style="max-width:100%; cursor:pointer;"
-        onclick="viewImage(this.src)"
-    >
+
+<img
+src="<?= htmlspecialchars($p['image']) ?>"
+style="
+max-width:100%;
+border-radius:10px;
+cursor:pointer;
+margin-top:10px;
+"
+onclick="viewImage(this.src)">
+
 <?php endif; ?>
 
 <?php
