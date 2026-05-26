@@ -1,4 +1,5 @@
 <?php
+
 session_start();
 require "db.php";
 
@@ -7,71 +8,176 @@ if(isset($_SESSION['id'])){
     exit;
 }
 
-$error = "";
+$error="";
 
-if($_POST){
+if($_SERVER["REQUEST_METHOD"]=="POST"){
 
-    $name = $_POST['name'];
-    $email = $_POST['email'];
-    $password = password_hash($_POST['password'], PASSWORD_DEFAULT);
+    $name=trim($_POST['name'] ?? '');
+    $email=trim($_POST['email'] ?? '');
+    $rawPassword=$_POST['password'] ?? '';
 
-    /* check if email exists */
-    $check = $db->prepare("SELECT id FROM users WHERE email=?");
-    $check->execute([$email]);
+    if(
+        empty($name) ||
+        empty($email) ||
+        empty($rawPassword)
+    ){
 
-    if($check->fetch()){
-        $error = "Email already exists";
+        $error="All fields are required";
+
     } else {
 
-        $stmt = $db->prepare("
-            INSERT INTO users(name,email,password)
-            VALUES(?,?,?)
-        ");
+        $password=password_hash(
+            $rawPassword,
+            PASSWORD_DEFAULT
+        );
 
-        $stmt->execute([$name,$email,$password]);
+        $check=$db->prepare(
+            "SELECT id
+            FROM users
+            WHERE email=?"
+        );
 
-        header("Location: login.php");
-        exit;
+        $check->execute([
+            $email
+        ]);
+
+        if($check->fetch()){
+
+            $error=
+            "Email already exists";
+
+        } else {
+
+            $stmt=$db->prepare(
+
+            "INSERT INTO users
+            (
+            name,
+            email,
+            password
+            )
+
+            VALUES
+            (
+            ?,
+            ?,
+            ?
+            )"
+
+            );
+
+            $ok=$stmt->execute([
+
+                $name,
+                $email,
+                $password
+
+            ]);
+
+            if($ok){
+
+                header(
+                "Location: login.php"
+                );
+
+                exit;
+
+            }else{
+
+                $error=
+                "Registration failed";
+
+            }
+
+        }
+
     }
+
 }
+
 ?>
 
 <!DOCTYPE html>
+
 <html>
+
 <head>
-    <title>LETUNITE Register</title>
-    <link rel="stylesheet" href="style.css">
+
+<title>LETUNITE Register</title>
+
+<link
+rel="stylesheet"
+href="style.css">
+
 </head>
 
 <body class="auth-body">
 
 <div class="auth-box">
 
-    <h2>Create Account</h2>
+<h2>Create Account</h2>
 
-    <?php if($error): ?>
-        <p style="color:red; text-align:center;">
-            <?= $error ?>
-        </p>
-    <?php endif; ?>
+<?php if($error): ?>
 
-    <form method="POST">
+<p
+style="
+color:red;
+text-align:center;
+">
 
-        <input type="text" name="name" placeholder="Full Name" required>
+<?= htmlspecialchars($error) ?>
 
-        <input type="text" name="email" placeholder="Email" required>
+</p>
 
-        <input type="password" name="password" placeholder="Password" required>
+<?php endif; ?>
 
-        <button type="submit">Sign Up</button>
+<form method="POST">
 
-    </form>
+<input
+type="text"
+name="name"
+placeholder="Full Name"
+required>
 
-    <p style="text-align:center; margin-top:10px;">
-        Already have an account? <a href="login.php" style="color:#00bfff;">Login</a>
-    </p>
+<input
+type="email"
+name="email"
+placeholder="Email"
+required>
+
+<input
+type="password"
+name="password"
+placeholder="Password"
+required>
+
+<button
+type="submit">
+
+Sign Up
+
+</button>
+
+</form>
+
+<p
+style="
+text-align:center;
+margin-top:10px;
+">
+
+Already have account?
+
+<a href="login.php">
+
+Login
+
+</a>
+
+</p>
 
 </div>
 
 </body>
+
 </html>
