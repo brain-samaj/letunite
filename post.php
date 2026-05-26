@@ -1,82 +1,126 @@
 <?php
+
 session_start();
+
 require "db.php";
+require "cloudinary.php";
 
 if(!isset($_SESSION['id'])){
-    exit("Not allowed");
+    header("Location:index.php");
+    exit;
 }
 
 $user = $_SESSION['id'];
 
-$content = isset($_POST['content']) ? trim($_POST['content']) : "";
+$content = trim($_POST['content'] ?? "");
 
-/* FILES */
 $image = "";
 $video = "";
 
-/* =========================
-   VALIDATION (IMPORTANT)
-========================= */
+/* IMAGE */
 
 if(
-$content == "" &&
-empty($_FILES['image']['name']) &&
-empty($_FILES['video']['name'])
+isset($_FILES['image']) &&
+$_FILES['image']['tmp_name'] != ""
 ){
-    exit("Post cannot be empty");
-}
 
-/* =========================
-   IMAGE UPLOAD
-========================= */
-
-if(!empty($_FILES['image']['name'])){
-
-$img = time()."_img_".basename($_FILES['image']['name']);
-
-move_uploaded_file(
-$_FILES['image']['tmp_name'],
-"uploads/".$img
+$image = uploadImage(
+$_FILES['image']['tmp_name']
 );
 
-$image = $img;
 }
 
-/* =========================
-   VIDEO UPLOAD
-========================= */
+/* VIDEO (MAX 60 SEC) */
 
-if(!empty($_FILES['video']['name'])){
+if(
+isset($_FILES['video']) &&
+$_FILES['video']['tmp_name'] != ""
+){
 
-$vid = time()."_vid_".basename($_FILES['video']['name']);
+$seconds = 0;
 
-move_uploaded_file(
-$_FILES['video']['tmp_name'],
-"uploads/".$vid
-);
+if(
+function_exists(
+'ffprobe'
+)
+){
 
-/* NOTE:
-   True duration check needs FFmpeg (optional)
+$seconds = 0;
+
+}
+
+/*
+Temporary size check
+(Adjust later if needed)
 */
 
-$video = $vid;
+if(
+$_FILES['video']['size']
+>
+50*1024*1024
+){
+
+die(
+"Video too large"
+);
+
 }
 
-/* =========================
-   INSERT POST
-========================= */
+/* Upload video */
 
-$stmt = $db->prepare("
-INSERT INTO posts(user_id, content, image, video)
-VALUES(?,?,?,?)
-");
+$result =
+\Cloudinary\Uploader::upload(
+
+$_FILES['video']['tmp_name'],
+
+[
+"resource_type"=>"video",
+"folder"=>"letunite_videos"
+]
+
+);
+
+$video =
+$result['secure_url'];
+
+}
+
+$stmt = $db->prepare(
+
+"
+
+INSERT INTO posts(
+
+user_id,
+content,
+image,
+video
+
+)
+
+VALUES(
+
+?,?,?,?
+
+)
+
+"
+
+);
 
 $stmt->execute([
+
 $user,
 $content,
 $image,
 $video
+
 ]);
 
-header("Location: home.php");
+header(
+"Location:home.php"
+);
+
 exit;
+
+?>

@@ -99,7 +99,15 @@ function viewImage(src){
 
 <textarea name="content" placeholder="What's happening?" required></textarea>
 
-<input type="file" name="image">
+<input
+type="file"
+name="image"
+accept="image/*">
+
+<input
+type="file"
+name="video"
+accept="video/*">
 
 <button type="submit">Post</button>
 
@@ -140,6 +148,24 @@ cursor:pointer;
 margin-top:10px;
 "
 onclick="viewImage(this.src)">
+
+<?php endif; ?>
+
+<?php if(!empty($p['video'])): ?>
+
+<video
+controls
+style="
+max-width:100%;
+border-radius:10px;
+margin-top:10px;
+">
+
+<source
+src="<?= htmlspecialchars($p['video']) ?>"
+type="video/mp4">
+
+</video>
 
 <?php endif; ?>
 
